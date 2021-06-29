@@ -19,7 +19,6 @@ package flock
 import (
 	"context"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 )
@@ -59,6 +58,11 @@ func (f *Flock) Close() error {
 // Path returns the path as provided in NewFlock().
 func (f *Flock) Path() string {
 	return f.path
+}
+
+// Fh returns the file handle.
+func (f *Flock) Fh() *os.File {
+	return f.fh
 }
 
 // Locked returns the lock state (locked: true, unlocked: false).
@@ -116,15 +120,8 @@ func tryCtx(ctx context.Context, fn func() (bool, error), retryDelay time.Durati
 
 func (f *Flock) setFh() error {
 	// open a new os.File instance
-	// create it if it doesn't exist, and open the file read-only.
-	flags := os.O_CREATE
-	if runtime.GOOS == "aix" {
-		// AIX cannot preform write-lock (ie exclusive) on a
-		// read-only file.
-		flags |= os.O_RDWR
-	} else {
-		flags |= os.O_RDONLY
-	}
+	// create it if it doesn't exist, and open the file in read-write mode.
+	flags := os.O_CREATE | os.O_RDWR
 	fh, err := os.OpenFile(f.path, flags, os.FileMode(0600))
 	if err != nil {
 		return err
